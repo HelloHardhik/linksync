@@ -1,7 +1,6 @@
 name = "linksync-backend"
-main = "backend/index.js"
+main = "index.js"
 compatibility_date = "2024-02-18"
-pages_build_output_dir = "dist"
 
 [vars]
 # Add global variables here if needed
