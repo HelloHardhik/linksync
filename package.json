@@ -8,8 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "server": "nodemon server.js",
-    "start": "node server.js",
-    "deploy:backend": "wrangler deploy --config backend/wrangler.toml"
+    "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
