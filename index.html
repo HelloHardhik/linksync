@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LinkSync | Connect globally</title>
+  <link rel="icon" type="image/png" href="logo.png">
+
+  <!-- Security Meta Tags -->
+  <meta name="referrer" content="no-referrer" />
+  <meta http-equiv="X-Frame-Options" content="DENY" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://peerjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; media-src 'self' https:; connect-src 'self' https://peerjs.com wss://*.peerjs.com https://*.peerjs.com;" />
+
+  <!-- Three.js and Vanta.js for animated background -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r121/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.waves.min.js"></script>
+
+  <!-- P2P Video Link (PeerJS) -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <!-- Real-time Matching (Socket.io) -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+  <!-- Vanta Waves Background -->
+  <div class="vanta-background" id="vantaBackground"></div>
+  <!-- Animated Particle Background -->
+  <div class="particle-background" id="particleBackground"></div>
+
+  <!-- Navigation -->
+  <nav class="navbar glass">
+    <a href="#" class="nav-logo" id="navLogo">
+      <img src="logo.png" alt="LinkSync Logo" style="height: 32px; width: auto; margin-right: 10px;">
+      <span style="color: var(--neon-cyan)">Link</span>Sync
+    </a>
+    <div class="nav-links">
+      <a href="#" class="btn btn-ghost" id="navHome" onclick="navigateTo('home'); return false;">Home</a>
+      <a href="#" class="btn btn-ghost" id="navProfile" style="display:none;">Profile</a>
+      <a href="#" class="btn btn-ghost" id="navAbout" onclick="event.preventDefault()">About</a>
+      <button id="authBtn" class="btn btn-primary btn-sm">Login</button>
+    </div>
+  </nav>
+
+  <!-- Main Content Area -->
+  <main id="app">
+    <!-- Views will be injected here by router -->
+  </main>
+
+  <!-- Templates for Views -->
+
+  <!-- Profile Template -->
+  <template id="view-profile">
+    <div class="container" style="max-width: 800px; margin: 100px auto; padding: 2rem;">
+      <div class="glass-panel" style="padding: 3rem;">
+        <h2 class="text-gradient" style="margin-bottom: 2rem;">Your Profile</h2>
+
+        <div style="display: flex; gap: 2rem; align-items: center; margin-bottom: 3rem;">
+          <div
+            style="width: 100px; height: 100px; border-radius: 50%; background: var(--glass-highlight); display: flex; align-items: center; justify-content: center; font-size: 3rem;">
+            👤
+          </div>
+          <div>
+            <h3 id="profileName" style="font-size: 2rem;">Username</h3>
+            <p id="profileEmail" style="color: var(--text-dim);">email@example.com</p>
+          </div>
+        </div>
+
+        <div style="display: grid; gap: 2rem;">
+          <!-- Friend Requests -->
+          <div>
+            <h4 style="margin-bottom: 1rem; color: var(--neon-purple);">Friend Requests</h4>
+            <div id="friendRequestsList" style="min-height: 100px;">
+              <!-- Friend requests populated by JS -->
+            </div>
+          </div>
+
+          <div style="display: grid; gap: 2rem; grid-template-columns: 1fr 1fr;">
+            <div>
+              <h4 style="margin-bottom: 1rem; color: var(--neon-cyan);">Friends</h4>
+              <div id="friendsList" style="min-height: 150px;">
+                <!-- Friends populated by JS -->
+              </div>
+            </div>
+            <div>
+              <h4 style="margin-bottom: 1rem; color: var(--neon-pink);">Liked Users</h4>
+              <div id="likedList" style="min-height: 150px;">
+                <!-- Liked users populated by JS -->
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h4 style="margin-bottom: 1rem; color: #ff4444;">Blocked Users</h4>
+            <div id="blockedList" style="min-height: 100px;">
+              <!-- Blocked users populated by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Auth/Landing Template -->
+  <template id="view-auth">
+    <div class="auth-container">
+      <div class="auth-card glass-panel fade-in">
+        <h1 class="text-gradient" style="margin-bottom: 0.5rem; font-size: 2.5rem;">LinkSync</h1>
+        <p style="color: var(--text-dim); margin-bottom: 2rem;">Connect with the world instantly.</p>
+
+        <div class="auth-tabs">
+          <button class="btn btn-ghost active" id="tabLogin">Login</button>
+          <button class="btn btn-ghost" id="tabSignup">Sign Up</button>
+        </div>
+
+        <form id="authForm">
+          <div id="signupFields" class="hidden">
+            <input type="text" placeholder="Username" class="auth-input" required>
+          </div>
+          <input type="email" placeholder="Email" class="auth-input" required>
+          <input type="password" placeholder="Password" class="auth-input" required>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+            <span id="submitText">Login</span>
+          </button>
+        </form>
+
+        <div style="margin: 1.5rem 0; position: relative;">
+          <hr style="border: 0; border-top: 1px solid var(--glass-border);">
+          <span
+            style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #16213e; padding: 0 10px; font-size: 0.8rem; color: var(--text-dim);">OR</span>
+        </div>
+
+        <button id="guestBtn" class="btn btn-outline" style="width: 100%;">
+          Continue as Guest
+        </button>
+
+        <div style="margin-top: 2rem; font-size: 0.8rem; color: var(--text-dim);">
+          Developed by <span style="color: var(--neon-cyan);">LinkSync Team</span>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Profile Setup Template -->
+  <template id="view-profile-setup">
+    <div class="auth-container">
+      <div class="glass-panel auth-card">
+        <h1 class="text-gradient" style="font-size: 2.5rem; margin-bottom: 0.5rem;">Complete Your Profile</h1>
+        <p style="color: var(--text-dim); margin-bottom: 2rem;">Tell us a bit about yourself</p>
+
+        <form id="profileSetupForm">
+          <input type="text" id="setupUsername" placeholder="Username" class="auth-input" required minlength="3"
+            maxlength="20">
+
+          <select id="setupGender" class="auth-input" required>
+            <option value="" disabled selected>Select Gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+            <option value="prefer-not-to-say">Prefer not to say</option>
+          </select>
+
+          <input type="number" id="setupAge" placeholder="Age (Must be 18+)" class="auth-input" required min="18"
+            max="100">
+
+          <select id="setupCountry" class="auth-input" required>
+            <option value="" disabled selected>Select Country</option>
+            <option value="US">United States</option>
+            <option value="GB">United Kingdom</option>
+            <option value="CA">Canada</option>
+            <option value="AU">Australia</option>
+            <option value="IN">India</option>
+            <option value="DE">Germany</option>
+            <option value="FR">France</option>
+            <option value="ES">Spain</option>
+            <option value="IT">Italy</option>
+            <option value="BR">Brazil</option>
+            <option value="MX">Mexico</option>
+            <option value="JP">Japan</option>
+            <option value="KR">South Korea</option>
+            <option value="CN">China</option>
+            <option value="RU">Russia</option>
+            <option value="OTHER">Other</option>
+          </select>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+            Continue to LinkSync
+          </button>
+        </form>
+
+        <div style="margin-top: 2rem; font-size: 0.8rem; color: var(--text-dim);">
+          Your information is private and secure 🔒
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Home/Interest Picker Template -->
+  <template id="view-home">
+    <div class="container" style="max-width: 1200px; margin: 80px auto; padding: 2rem;">
+      <div class="glass-panel" style="padding: 3rem; text-align: center;">
+        <h2 class="text-gradient" style="font-size: 3rem; margin-bottom: 1rem;">Who do you want to meet?</h2>
+        <p style="margin-bottom: 2rem; font-size: 1.2rem; color: var(--text-dim);">Select topics to find your vibe.</p>
+
+        <div class="interest-grid" id="interestGrid">
+          <!-- JS will populate these -->
+        </div>
+
+        <!-- Optional Advanced Filters Toggles -->
+        <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
+          <button id="toggleAgeBtn" class="btn btn-ghost btn-sm" style="border: 1px solid var(--glass-border);">
+            🎂 Filter by Age
+          </button>
+          <button id="toggleCountryBtn" class="btn btn-ghost btn-sm" style="border: 1px solid var(--glass-border);">
+            🌐 Filter by Country
+          </button>
+        </div>
+
+        <!-- Matching Preferences (Optional) -->
+        <div
+          style="margin-top: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; justify-content: center; max-width: 800px; margin-left: auto; margin-right: auto;">
+          <!-- Age Filter Block -->
+          <div id="ageFilterWrapper" style="flex: 2; min-width: 280px; display: none;">
+            <label
+              style="display: block; color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.5rem; text-align: left;">Search
+              by Age</label>
+            <div class="auth-input"
+              style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0; padding: 0.5rem 1rem;">
+              <input type="number" id="filterMinAge" placeholder="Min"
+                style="background: transparent; border: none; color: #fff; width: 60px; outline: none; padding: 4px 0;"
+                min="18" value="18">
+              <span style="color: var(--text-dim); font-size: 0.8rem;">Min</span>
+              <div style="width: 1px; height: 18px; background: var(--glass-border); margin: 0 8px;"></div>
+              <input type="number" id="filterMaxAge" placeholder="Max"
+                style="background: transparent; border: none; color: #fff; width: 60px; outline: none; padding: 4px 0;"
+                min="18" value="100">
+              <span style="color: var(--text-dim); font-size: 0.8rem;">Max</span>
+            </div>
+          </div>
+
+          <!-- Country Filter Block -->
+          <div id="countryFilterWrapper" style="flex: 1; min-width: 150px; display: none;">
+            <label
+              style="display: block; color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.5rem; text-align: left;">Search
+              by Country</label>
+            <select id="filterCountry" class="auth-input" style="margin-bottom: 0;">
+              <option value="ANY">Any Country</option>
+              <option value="US">United States</option>
+              <option value="IN">India</option>
+              <option value="GB">United Kingdom</option>
+              <option value="CA">Canada</option>
+              <option value="DE">Germany</option>
+              <option value="FR">France</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-top: 3rem; display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem;">
+          <button class="btn btn-outline" id="connectGirl">
+            <span>🌸</span> Connect Girl
+          </button>
+          <button class="btn btn-primary" id="connectRandom" style="padding: 1rem 3rem; font-size: 1.2rem;">
+            Start Video Chat
+          </button>
+          <button class="btn btn-outline" id="connectBoy">
+            <span>💙</span> Connect Boy
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Video Chat Template -->
+  <template id="view-video">
+    <div class="call-wrapper">
+      <!-- Big remote video -->
+      <video id="remoteVideo" autoplay playsinline class="remote-video"></video>
+
+      <!-- Small movable self-view top-right -->
+      <div id="selfViewWrapper" class="self-view-wrapper">
+        <video id="localVideo" autoplay muted playsinline class="self-video"></video>
+      </div>
+
+      <!-- Status Overlay -->
+      <div class="status-overlay" id="statusOverlay">
+        <div class="status-text">Searching for a match...</div>
+      </div>
+
+      <!-- Right Side Actions -->
+      <div class="video-actions-right">
+        <button class="btn btn-outline btn-icon-only glass" title="Add Friend" id="addFriendBtn">
+          👤+
+        </button>
+        <button class="btn btn-outline btn-icon-only glass" title="Like" id="likeBtn">
+          ❤️
+        </button>
+        <button class="btn btn-outline btn-icon-only glass" title="Show Chat" id="toggleChatBtn">
+          💬
+        </button>
+        <button class="btn btn-outline btn-icon-only glass"
+          style="border-color: var(--neon-pink); color: var(--neon-pink);" title="Report/Block" id="reportBtn">
+          ⚠️
+        </button>
+      </div>
+
+      <!-- Chat Overlay -->
+      <div class="chat-overlay glass minimized" id="chatOverlay">
+        <div
+          style="padding: 10px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: bold;">Live Chat</span>
+          <button class="btn btn-ghost btn-sm" id="closeChatBtn">✕</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-msg remote">You're connected! Say hi 👋</div>
+        </div>
+        <div class="chat-input-area">
+          <input type="text" id="chatInput" placeholder="Type a message...">
+          <button class="btn btn-ghost btn-sm" id="sendBtn">➤</button>
+        </div>
+      </div>
+
+      <!-- Bottom Controls -->
+      <div class="video-controls-bottom glass">
+        <button class="btn btn-outline" id="vidStopBtn"
+          style="border-color: var(--neon-pink); color: var(--neon-pink);">
+          Stop
+        </button>
+        <button class="btn btn-primary" id="vidNextBtn">
+          Next User ⏭️
+        </button>
+      </div>
+    </div>
+  </template>
+  <style>
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Liked Glow Effect */
+    .liked-glow {
+      color: #ff2d85 !important;
+      border-color: #ff2d85 !important;
+      box-shadow: 0 0 20px rgba(255, 45, 133, 0.6) !important;
+      transform: scale(1.1);
+      background: rgba(255, 45, 133, 0.1) !important;
+    }
+
+    /* Report Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(5px);
+    }
+
+    .report-modal {
+      width: 90%;
+      max-width: 400px;
+      padding: 2.5rem;
+      text-align: center;
+      background: rgba(13, 13, 27, 0.8) !important;
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      color: #fff;
+    }
+
+    .report-modal h3 {
+      margin-bottom: 1.5rem;
+      font-size: 1.8rem;
+    }
+
+    .report-modal textarea {
+      width: 100%;
+      height: 100px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      color: #fff;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      resize: none;
+      font-family: inherit;
+    }
+
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    /* Typing Indicator */
+    .typing-indicator {
+      display: flex;
+      gap: 4px;
+      padding: 12px 16px !important;
+      width: fit-content;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      background: var(--text-dim);
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out both;
+    }
+
+    .dot:nth-child(1) {
+      animation-delay: -0.32s;
+    }
+
+    .dot:nth-child(2) {
+      animation-delay: -0.16s;
+    }
+
+    @keyframes bounce {
+
+      0%,
+      80%,
+      100% {
+        transform: scale(0);
+      }
+
+      40% {
+        transform: scale(1.0);
+      }
+    }
+  </style>
+  </template>
+
+  <script type="module" src="/main.js"></script>
+</body>
+
+</html>
