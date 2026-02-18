@@ -24,22 +24,41 @@ export function initVideo() {
         console.log('[VIDEO] Initializing PeerJS & Matchmaker...')
 
         // Connect to Cloudflare Worker (Replace with your actual worker URL after deployment)
+        // For now, we'll try to connect, but handle failure gracefully
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        // Use a placeholder or environment variable. 
+        // If you have a real separate backend, put it here.
         const backendUrl = `${protocol}//linksync-backend.hellohardhik.workers.dev`;
 
-        socket = new WebSocket(backendUrl);
+        try {
+            socket = new WebSocket(backendUrl);
 
-        socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === 'match-found') {
-                console.log('[WS] Match found! Role:', data.role);
-                if (data.role === 'caller') {
-                    initiateCall(data.partnerPeerId);
-                } else {
-                    statusText.textContent = "Connecting to peer...";
+            socket.onopen = () => {
+                console.log('[WS] Connected to Matchmaker');
+                statusText.textContent = "Connected to server!";
+            };
+
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'match-found') {
+                    console.log('[WS] Match found! Role:', data.role);
+                    if (data.role === 'caller') {
+                        initiateCall(data.partnerPeerId);
+                    } else {
+                        statusText.textContent = "Connecting to peer...";
+                    }
                 }
-            }
-        };
+            };
+
+            socket.onerror = (err) => {
+                console.warn('[WS] Connection failed (Backend likely not deployed). Switching to Demo/Bot Mode.', err);
+                socket = null; // Ensure we know it failed
+            };
+
+        } catch (e) {
+            console.error('[WS] Error initializing:', e);
+            socket = null;
+        }
 
         peer = new Peer(undefined, {
             debug: 1,
@@ -125,16 +144,23 @@ export function initVideo() {
             selfWrapper.style.cssText = `position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; border-radius: 0; border: none; z-index: 5;`
         }
 
-        // Socket Matchmaking
-        if (peer && peer.id && socket.readyState === 1) {
-            socket.send(JSON.stringify({
-                type: 'start-search',
-                peerId: peer.id,
-                interests: storedInterests,
-                gender: sessionStorage.getItem('linksync_pref_gender'),
-                age: sessionStorage.getItem('linksync_pref_min_age'),
-                country: sessionStorage.getItem('linksync_pref_country')
-            }))
+        if (peer && peer.id) {
+            // If connected to Cloudflare backend
+            if (socket && socket.readyState === 1) {
+                socket.send(JSON.stringify({
+                    type: 'start-search',
+                    peerId: peer.id,
+                    interests: storedInterests,
+                    gender: sessionStorage.getItem('linksync_pref_gender'),
+                    age: sessionStorage.getItem('linksync_pref_min_age'),
+                    country: sessionStorage.getItem('linksync_pref_country')
+                }));
+            } else {
+                // FALLBACK: Simulate connect to Bot if no backend
+                console.warn('[MATCHMAKER] Backend unreachable. Using offline/bot mode.');
+                statusText.textContent = "Connecting to demo user...";
+                connectToBot();
+            }
         }
     }
 
