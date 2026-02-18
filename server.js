@@ -98,7 +98,7 @@ function removeFromWaiting(socketId) {
     if (index !== -1) waitingUsers.splice(index, 1);
 }
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-    console.log(`LinkSync Backend running on http://localhost:${PORT}`);
+    console.log(`LinkSync Backend running on port ${PORT}`);
 });
