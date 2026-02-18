@@ -1,0 +1,6 @@
+name = "linksync-backend"
+main = "backend/index.js"
+compatibility_date = "2024-02-18"
+
+[vars]
+# Add global variables here if needed

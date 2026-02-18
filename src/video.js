@@ -19,11 +19,27 @@ export function initVideo() {
     let searchTimeout = null
     let currentRemoteUser = null
 
-    // 1) Initialize PeerJS & Socket.io
+    // 1) Initialize PeerJS & WebSocket
     function initPeer() {
-        console.log('[VIDEO] Initializing PeerJS & Socket.io...')
+        console.log('[VIDEO] Initializing PeerJS & Matchmaker...')
 
-        socket = io('http://localhost:3000')
+        // Connect to Cloudflare Worker (Replace with your actual worker URL after deployment)
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const backendUrl = `${protocol}//linksync-backend.hellohardhik.workers.dev`;
+
+        socket = new WebSocket(backendUrl);
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'match-found') {
+                console.log('[WS] Match found! Role:', data.role);
+                if (data.role === 'caller') {
+                    initiateCall(data.partnerPeerId);
+                } else {
+                    statusText.textContent = "Connecting to peer...";
+                }
+            }
+        };
 
         peer = new Peer(undefined, {
             debug: 1,
@@ -86,7 +102,7 @@ export function initVideo() {
 
     // 3) Search & Matchmaking
     function startSearching() {
-        if (socket) socket.emit('stop-search')
+        if (socket && socket.readyState === 1) socket.send(JSON.stringify({ type: 'stop-search' }))
         cleanupCurrentConnection()
         isConnected = false
         remoteVideo.srcObject = null
@@ -110,14 +126,15 @@ export function initVideo() {
         }
 
         // Socket Matchmaking
-        if (peer && peer.id) {
-            socket.emit('start-search', {
+        if (peer && peer.id && socket.readyState === 1) {
+            socket.send(JSON.stringify({
+                type: 'start-search',
                 peerId: peer.id,
                 interests: storedInterests,
                 gender: sessionStorage.getItem('linksync_pref_gender'),
                 age: sessionStorage.getItem('linksync_pref_min_age'),
                 country: sessionStorage.getItem('linksync_pref_country')
-            })
+            }))
         }
     }
 
